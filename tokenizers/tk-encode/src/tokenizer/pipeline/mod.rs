@@ -838,12 +838,14 @@ impl PipelineTokenizer {
                                 // The whole span list at once; see Model::tokenize_spans.
                                 // SAFETY: `PreTokenizer` guarantees every span is a valid range of
                                 // `normalized_chunk`, which is what lets the model slice it unchecked.
-                                self.inner.model.tokenize_spans(
-                                    normalized_chunk,
-                                    pre_tokens,
-                                    model_scratch,
-                                    output,
-                                )?;
+                                unsafe {
+                                    self.inner.model.tokenize_spans(
+                                        normalized_chunk,
+                                        pre_tokens,
+                                        model_scratch,
+                                        output,
+                                    )
+                                }?;
                             }
                         }
                     }
@@ -1053,7 +1055,13 @@ pub trait Model {
     ///
     /// The default is the loop it replaces, so a model only overrides this if it has per-chunk
     /// work to hoist out of the loop.
-    fn tokenize_spans(
+    ///
+    /// # Safety
+    ///
+    /// Every span must satisfy the [`PreTokenizer`] invariants for `chunk`: inside it, not
+    /// reversed, and starting and ending on char boundaries. An override may slice `chunk` with
+    /// [`str::get_unchecked`].
+    unsafe fn tokenize_spans(
         &self,
         chunk: &str,
         spans: &[Span],
@@ -1167,7 +1175,8 @@ impl Model for PipelineModel {
         }
     }
 
-    fn tokenize_spans(
+    // SAFETY: each arm forwards the caller's spans unchanged, so the caller's guarantee holds.
+    unsafe fn tokenize_spans(
         &self,
         chunk: &str,
         spans: &[Span],
@@ -1175,21 +1184,21 @@ impl Model for PipelineModel {
         output: &mut Vec<PipelineToken>,
     ) -> Result<()> {
         match (self, scratch) {
-            (Self::BPE(model), PipelineModelScratch::BPE(scratch)) => {
+            (Self::BPE(model), PipelineModelScratch::BPE(scratch)) => unsafe {
                 model.tokenize_spans(chunk, spans, scratch, output)
-            }
+            },
             #[cfg(feature = "unigram")]
-            (Self::Unigram(model), PipelineModelScratch::Unigram(scratch)) => {
+            (Self::Unigram(model), PipelineModelScratch::Unigram(scratch)) => unsafe {
                 model.tokenize_spans(chunk, spans, scratch, output)
-            }
+            },
             #[cfg(feature = "wordlevel")]
-            (Self::WordLevel(model), PipelineModelScratch::WordLevel(scratch)) => {
+            (Self::WordLevel(model), PipelineModelScratch::WordLevel(scratch)) => unsafe {
                 model.tokenize_spans(chunk, spans, scratch, output)
-            }
+            },
             #[cfg(feature = "wordpiece")]
-            (Self::WordPiece(model), PipelineModelScratch::WordPiece(scratch)) => {
+            (Self::WordPiece(model), PipelineModelScratch::WordPiece(scratch)) => unsafe {
                 model.tokenize_spans(chunk, spans, scratch, output)
-            }
+            },
             _ => unreachable!(),
         }
     }
