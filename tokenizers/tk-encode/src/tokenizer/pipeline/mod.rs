@@ -1130,7 +1130,7 @@ impl PipelineModel {
 ///
 /// Each model gets its own variant.
 impl Tokenize for PipelineModel {
-    type Scratch = PipelineModelScratch;
+    type Scratch = ModelScratch;
 
     fn tokenize_pipeline(
         &self,
@@ -1139,19 +1139,19 @@ impl Tokenize for PipelineModel {
         output: &mut Vec<Token>,
     ) -> Result<()> {
         match (self, scratch) {
-            (Self::BPE(model), PipelineModelScratch::BPE(scratch)) => {
+            (Self::BPE(model), ModelScratch::BPE(scratch)) => {
                 model.tokenize_pipeline(sequence, scratch, output)
             }
             #[cfg(feature = "unigram")]
-            (Self::Unigram(model), PipelineModelScratch::Unigram(scratch)) => {
+            (Self::Unigram(model), ModelScratch::Unigram(scratch)) => {
                 model.tokenize_pipeline(sequence, scratch, output)
             }
             #[cfg(feature = "wordlevel")]
-            (Self::WordLevel(model), PipelineModelScratch::WordLevel(scratch)) => {
+            (Self::WordLevel(model), ModelScratch::WordLevel(scratch)) => {
                 model.tokenize_pipeline(sequence, scratch, output)
             }
             #[cfg(feature = "wordpiece")]
-            (Self::WordPiece(model), PipelineModelScratch::WordPiece(scratch)) => {
+            (Self::WordPiece(model), ModelScratch::WordPiece(scratch)) => {
                 model.tokenize_pipeline(sequence, scratch, output)
             }
             _ => unreachable!(),
@@ -1166,19 +1166,19 @@ impl Tokenize for PipelineModel {
         output: &mut Vec<Token>,
     ) -> Result<()> {
         match (self, scratch) {
-            (Self::BPE(model), PipelineModelScratch::BPE(scratch)) => {
+            (Self::BPE(model), ModelScratch::BPE(scratch)) => {
                 model.tokenize_spans(chunk, spans, scratch, output)
             }
             #[cfg(feature = "unigram")]
-            (Self::Unigram(model), PipelineModelScratch::Unigram(scratch)) => {
+            (Self::Unigram(model), ModelScratch::Unigram(scratch)) => {
                 model.tokenize_spans(chunk, spans, scratch, output)
             }
             #[cfg(feature = "wordlevel")]
-            (Self::WordLevel(model), PipelineModelScratch::WordLevel(scratch)) => {
+            (Self::WordLevel(model), ModelScratch::WordLevel(scratch)) => {
                 model.tokenize_spans(chunk, spans, scratch, output)
             }
             #[cfg(feature = "wordpiece")]
-            (Self::WordPiece(model), PipelineModelScratch::WordPiece(scratch)) => {
+            (Self::WordPiece(model), ModelScratch::WordPiece(scratch)) => {
                 model.tokenize_spans(chunk, spans, scratch, output)
             }
             _ => unreachable!(),
@@ -1187,7 +1187,7 @@ impl Tokenize for PipelineModel {
 
     fn init_scratch(&self) -> Self::Scratch {
         match self {
-            Self::BPE(bpe) => PipelineModelScratch::BPE(bpe.init_scratch()),
+            Self::BPE(bpe) => ModelScratch::BPE(bpe.init_scratch()),
             #[cfg(feature = "wordlevel")]
             Self::WordLevel(_) => Self::Scratch::WordLevel(()),
             #[cfg(feature = "wordpiece")]
@@ -1200,7 +1200,7 @@ impl Tokenize for PipelineModel {
 
 #[derive(Default)]
 #[non_exhaustive]
-pub enum PipelineModelScratch {
+pub enum ModelScratch {
     BPE(BpeScratch),
     #[cfg(feature = "wordlevel")]
     WordLevel(()),
