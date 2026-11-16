@@ -38,6 +38,9 @@ fn write_one(out: &mut Out, normalizer: &PipelineNormalizer) -> Result<()> {
     }
 
     match normalizer {
+        PipelineNormalizer::Custom(_) => {
+            return Err("custom normalizers cannot be serialized".into());
+        }
         PipelineNormalizer::Metaspace(metaspace) => {
             out.obj_open();
             out.type_tag("MetaspaceNormalizer");
