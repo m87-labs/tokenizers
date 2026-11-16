@@ -40,7 +40,7 @@ mod normalizer;
 mod post_processor;
 mod pre_tokenizer;
 
-pub use normalizer::{Normalizer, NormalizerChain, PipelineNormalizer, normalize_all};
+pub use normalizer::{CustomNormalizer, Normalizer, NormalizerChain, PipelineNormalizer, normalize_all};
 pub use post_processor::{PipelinePostProcessor, Template};
 pub use pre_tokenizer::{
     PipelinePreTokenizer, PreTokenizer, PreTokenizerScratch, SplitPolicy, split, split_delimiter,
@@ -565,6 +565,23 @@ impl IntoIterator for EncodeHandle {
 }
 
 impl PipelineTokenizer {
+    /// Transform normalization steps before sharing the compiled tokenizer.
+    ///
+    /// The vocabulary, model and other pipeline components are retained in place.
+    /// Returns an error if a clone already shares this tokenizer's configuration.
+    /// Added-token match tables are retained too: the replacement must preserve
+    /// normalization of the configured added-token spellings.
+    pub fn map_normalizers(
+        mut self,
+        transform: impl FnMut(PipelineNormalizer) -> PipelineNormalizer,
+    ) -> Result<Self> {
+        let inner = Arc::get_mut(&mut self.inner)
+            .ok_or("cannot change normalizers after sharing a tokenizer")?;
+        inner.normalizers = std::mem::take(&mut inner.normalizers)
+            .into_iter().map(transform).collect();
+        Ok(self)
+    }
+
     pub fn get_model(&self) -> &PipelineModel {
         &self.inner.model
     }

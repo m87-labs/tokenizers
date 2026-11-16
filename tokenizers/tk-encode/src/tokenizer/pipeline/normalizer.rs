@@ -2,6 +2,7 @@
 //! [`PipelineNormalizer`] enum of concrete steps, and the chain that runs them.
 
 use std::borrow::Cow;
+use std::sync::Arc;
 
 #[cfg(feature = "normalizers")]
 use crate::normalizers::{
@@ -22,9 +23,15 @@ pub trait Normalizer {
     fn normalize<'a>(&self, input: &'a str, offset: usize) -> Result<Cow<'a, str>>;
 }
 
+/// A caller-owned normalization step that can be shared by encoding threads.
+pub trait CustomNormalizer: Normalizer + Send + Sync + std::fmt::Debug {}
+impl<T: Normalizer + Send + Sync + std::fmt::Debug> CustomNormalizer for T {}
+
 /// One normalization step of a [`PipelineTokenizer`].
 #[derive(Debug)]
 pub enum PipelineNormalizer {
+    /// An in-memory extension. It has no tokenizer.json representation.
+    Custom(Arc<dyn CustomNormalizer>),
     /// This used to be a pretokenizer, it makes more sense as a normalizer.
     Metaspace(MetaspaceNormalizer),
     Replace(Replace),
@@ -97,6 +104,7 @@ impl Normalizer for NormalizerChain<'_> {
 impl Normalizer for PipelineNormalizer {
     fn normalize<'a>(&self, input: &'a str, offset: usize) -> Result<Cow<'a, str>> {
         match self {
+            Self::Custom(normalizer) => normalizer.normalize(input, offset),
             Self::Metaspace(normalizer) => normalizer.normalize(input, offset),
             Self::Replace(normalizer) => normalizer.normalize(input, offset),
             Self::Prepend(normalizer) => normalizer.normalize(input, offset),
